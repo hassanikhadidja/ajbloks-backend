@@ -1,12 +1,13 @@
 // controlles/productcontrolles.js
 const Product    = require("../models/product");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolder");
 
 // Upload one buffer to Cloudinary, return secure_url
 const uploadOne = (buffer) =>
   new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
-      { folder: "jeunes-toys" },
+      { folder: cloudinaryFolder() },
       (err, result) => { if (err) reject(err); else resolve(result.secure_url); }
     ).end(buffer);
   });

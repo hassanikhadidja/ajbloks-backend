@@ -2,6 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const router = express.Router();
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolder");
 const { Auth } = require("../middlewares/isAuth");
 const isAdmin = require("../middlewares/isAdmin");
 
@@ -36,7 +37,7 @@ router.post("/", Auth, isAdmin, (req, res, next) => {
   }
 }, async (req, res) => {
   try {
-    const folder = req.body.folder || "play";
+    const folder = cloudinaryFolder(req.body.folder || "play");
     const resourceType = req.body.resourceType === "raw" ? "raw" : "image";
     let dataUrl;
     let buffer;

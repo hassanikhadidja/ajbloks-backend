@@ -40,6 +40,7 @@ const Catalogue = require("../models/catalogue");
 const PlayItem = require("../models/playitem");
 const SiteSettings = require("../models/sitesettings");
 const cloudinary = require("../config/cloudinary");
+const { cloudinaryFolder } = require("../config/cloudinaryFolder");
 
 async function uploadDataUrlIfNeeded(value, folder, resourceType = "image") {
   if (!value || typeof value !== "string" || !value.startsWith("data:")) return value;
@@ -48,7 +49,10 @@ async function uploadDataUrlIfNeeded(value, folder, resourceType = "image") {
     process.env.CLOUDINARY_APIKEY &&
     process.env.CLOUDINARY_APISECRET;
   if (!hasCloudinary) return value;
-  const result = await cloudinary.uploader.upload(value, { folder, resource_type: resourceType });
+  const result = await cloudinary.uploader.upload(value, {
+    folder: cloudinaryFolder(folder),
+    resource_type: resourceType,
+  });
   return result.secure_url;
 }
 

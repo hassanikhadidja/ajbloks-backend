@@ -15,7 +15,17 @@ const uploadRoutes = require("./routes/uploadRoutes");
 
 const app = express();
 
-app.use(cors({ origin: "*", credentials: true }));
+// origin: "*" + credentials: true is invalid in browsers — reflect the request origin instead
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    maxAge: 86400,
+  }),
+);
+app.options(/.*/, cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
