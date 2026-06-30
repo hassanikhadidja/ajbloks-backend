@@ -1,6 +1,7 @@
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const connectDB = require("./config/connectDB");
 
 const productRoutes = require("./routes/productRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -17,6 +18,24 @@ app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+let dbReady;
+
+app.use(async (req, res, next) => {
+  try {
+    if (!dbReady) {
+      dbReady = connectDB();
+    }
+    await dbReady;
+    next();
+  } catch (error) {
+    dbReady = null;
+    return res.status(503).json({
+      msg: "Database connection failed",
+      error: error.message,
+    });
+  }
+});
 
 const mount = (prefix, router) => {
   app.use(prefix, router);
