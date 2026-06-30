@@ -39,6 +39,37 @@ const Store = require("../models/store");
 const Catalogue = require("../models/catalogue");
 const PlayItem = require("../models/playitem");
 const SiteSettings = require("../models/sitesettings");
+const cloudinary = require("../config/cloudinary");
+
+async function uploadDataUrlIfNeeded(value, folder, resourceType = "image") {
+  if (!value || typeof value !== "string" || !value.startsWith("data:")) return value;
+  const result = await cloudinary.uploader.upload(value, { folder, resource_type: resourceType });
+  return result.secure_url;
+}
+
+async function processPlayBody(body) {
+  const data = { ...body };
+  if (data.coverImage) {
+    data.coverImage = await uploadDataUrlIfNeeded(data.coverImage, "play");
+  }
+  if (data.pdfUrl) {
+    data.pdfUrl = await uploadDataUrlIfNeeded(data.pdfUrl, "play-pdfs", "raw");
+  }
+  if (Array.isArray(data.steps)) {
+    data.steps = await Promise.all(
+      data.steps.map(async (step) => ({
+        text: step.text,
+        image: await uploadDataUrlIfNeeded(step.image, "play-steps"),
+      })),
+    );
+  }
+  return data;
+}
+
+function mapPlayItem(item) {
+  const obj = item.toObject ? item.toObject() : item;
+  return { ...obj, id: String(obj._id) };
+}
 
 const review = makeCrud(Review);
 const store = makeCrud(Store);
@@ -66,7 +97,10 @@ exports.listPlay = async (req, res) => {
   try {
     const items = await PlayItem.find().sort({ createdAt: -1 });
     const grouped = { toys: [], diy: [], printables: [], bobs: [] };
-    items.forEach((item) => grouped[item.section].push(item));
+    items.forEach((item) => {
+      const mapped = mapPlayItem(item);
+      grouped[item.section].push(mapped);
+    });
     res.json(grouped);
   } catch (e) {
     res.status(503).json({ msg: e.message });
@@ -75,7 +109,8 @@ exports.listPlay = async (req, res) => {
 
 exports.createPlay = async (req, res) => {
   try {
-    const item = await PlayItem.create(req.body);
+    const data = await processPlayBody(req.body);
+    const item = await PlayItem.create(data);
     res.status(201).json({ msg: "Created", id: item._id });
   } catch (e) {
     res.status(503).json({ msg: e.message });
@@ -84,7 +119,8 @@ exports.createPlay = async (req, res) => {
 
 exports.updatePlay = async (req, res) => {
   try {
-    await PlayItem.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const data = await processPlayBody(req.body);
+    await PlayItem.findByIdAndUpdate(req.params.id, data, { new: true });
     res.status(202).json({ msg: "Updated" });
   } catch (e) {
     res.status(503).json({ msg: e.message });
