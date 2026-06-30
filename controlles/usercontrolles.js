@@ -2,6 +2,7 @@ const isValidEmail = require("../middlewares/emailvalidator")
 const passwordvalidator = require("../middlewares/passwordvalidator")
 const User=require("../models/user")
 const bcrypt = require("bcrypt")
+const { getJwtSecret } = require("../config/jwtSecret")
 
 exports.Adduser=async(req,res)=>{
     try {
@@ -45,10 +46,13 @@ exports.Login=async(req,res)=>{
           }
           const jwt = require("jsonwebtoken")
           const payload = { _id: existUser._id };
-          const token = jwt.sign(payload, process.env.secretKey);
+          const token = jwt.sign(payload, getJwtSecret());
 
           return res.status(200).json({msg:"login success",token})
     } catch (error) {
+        if (error.code === "JWT_SECRET_MISSING") {
+            return res.status(503).json({ msg: error.message })
+        }
         return res.status(503).json({msg:error.message})
     }
 }

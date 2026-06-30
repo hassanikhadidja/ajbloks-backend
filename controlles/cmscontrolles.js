@@ -43,6 +43,11 @@ const cloudinary = require("../config/cloudinary");
 
 async function uploadDataUrlIfNeeded(value, folder, resourceType = "image") {
   if (!value || typeof value !== "string" || !value.startsWith("data:")) return value;
+  const hasCloudinary =
+    process.env.CLOUDINARY_NAME &&
+    process.env.CLOUDINARY_APIKEY &&
+    process.env.CLOUDINARY_APISECRET;
+  if (!hasCloudinary) return value;
   const result = await cloudinary.uploader.upload(value, { folder, resource_type: resourceType });
   return result.secure_url;
 }

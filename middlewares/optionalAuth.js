@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const { getJwtSecret } = require("../config/jwtSecret");
 
 exports.optionalAuth = async (req, res, next) => {
   try {
@@ -9,7 +10,7 @@ exports.optionalAuth = async (req, res, next) => {
     const token = header.split(" ")[1];
     if (!token) return next();
 
-    const decoded = jwt.verify(token, process.env.secretKey);
+    const decoded = jwt.verify(token, getJwtSecret());
     const user = await User.findById(decoded._id).select("-password");
     if (user) req.user = user;
     next();

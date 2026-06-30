@@ -11,6 +11,7 @@ const storeRoutes = require("./routes/storeRoutes");
 const catalogueRoutes = require("./routes/catalogueRoutes");
 const playRoutes = require("./routes/playRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 const app = express();
 
@@ -50,6 +51,7 @@ mount("/store", storeRoutes);
 mount("/catalogue", catalogueRoutes);
 mount("/play", playRoutes);
 mount("/settings", settingsRoutes);
+mount("/upload", uploadRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 

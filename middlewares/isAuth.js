@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const { getJwtSecret } = require("../config/jwtSecret");
 
 exports.Auth = async (req, res, next) => {
   try {
@@ -14,7 +15,7 @@ exports.Auth = async (req, res, next) => {
       return res.status(401).json({ msg: "Unauthorized" });
     }
 
-    const decoded = jwt.verify(token,process.env.secretKey);
+    const decoded = jwt.verify(token, getJwtSecret());
     if (!decoded) {
       return res.status(401).json({ msg: "Unauthorized" });
     }
