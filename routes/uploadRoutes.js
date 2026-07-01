@@ -6,9 +6,11 @@ const { cloudinaryFolder } = require("../config/cloudinaryFolder");
 const { Auth } = require("../middlewares/isAuth");
 const isAdmin = require("../middlewares/isAdmin");
 
+const MAX_PRINTABLE_PDF_BYTES = 20 * 1024 * 1024;
+
 const uploadMem = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: MAX_PRINTABLE_PDF_BYTES },
 });
 
 function hasCloudinary() {
@@ -44,6 +46,9 @@ router.post("/", Auth, isAdmin, (req, res, next) => {
 
     if (req.file) {
       buffer = req.file.buffer;
+      if (resourceType === "raw" && buffer.length > MAX_PRINTABLE_PDF_BYTES) {
+        return res.status(413).json({ msg: "PDF trop volumineux (max 20 Mo)." });
+      }
       const mime =
         req.file.mimetype ||
         (resourceType === "raw" ? "application/pdf" : "image/png");
@@ -55,6 +60,9 @@ router.post("/", Auth, isAdmin, (req, res, next) => {
       }
       dataUrl = bodyDataUrl;
       buffer = Buffer.from(dataUrl.split(",")[1], "base64");
+      if (resourceType === "raw" && buffer.length > MAX_PRINTABLE_PDF_BYTES) {
+        return res.status(413).json({ msg: "PDF trop volumineux (max 20 Mo)." });
+      }
     }
 
     if (!hasCloudinary()) {
