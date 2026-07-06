@@ -65,20 +65,45 @@ async function resolveImageUrls(body, uploadedUrls) {
   return [...new Set(resolved)];
 }
 
-function applyProductFields(product, fields, img) {
-  const next = { ...fields };
-  if (img && img.length) next.img = img;
-  else delete next.img;
+function applyProductFields(product, fields, resolvedImg) {
+  const scalarKeys = [
+    "name",
+    "sku",
+    "price",
+    "description",
+    "age_plus",
+    "age",
+    "ageTranche",
+    "isEducational",
+    "category",
+    "tags",
+    "sizes",
+    "rating",
+    "stock",
+    "articles",
+    "characteristics",
+    "character",
+    "warning",
+    "whyLoveIt",
+    "qa",
+    "isBook",
+    "isTrending",
+    "hasMultipleColors",
+    "colors",
+  ];
 
-  Object.keys(next).forEach((key) => {
-    product.set(key, next[key]);
+  scalarKeys.forEach((key) => {
+    if (fields[key] !== undefined) {
+      product.set(key, fields[key]);
+    }
   });
 
-  if (Array.isArray(next.colors)) {
+  if (Array.isArray(fields.colors)) {
     product.markModified("colors");
   }
-  if (typeof next.hasMultipleColors === "boolean") {
-    product.markModified("hasMultipleColors");
+
+  if (resolvedImg && resolvedImg.length) {
+    product.set("img", resolvedImg);
   }
 }
 
@@ -99,7 +124,11 @@ exports.AddProduct = async (req, res) => {
     }
 
     const product = await Product.create(fields);
-    return res.status(201).send({ msg: "product added", id: product._id });
+    return res.status(201).send({
+      msg: "product added",
+      id: product._id,
+      product: productToDashboard(product),
+    });
   } catch (error) {
     return res.status(503).send({ msg: error.message });
   }
@@ -108,7 +137,7 @@ exports.AddProduct = async (req, res) => {
 // ── GET ALL ──────────────────────────────────────────────────────
 exports.GetProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find().sort({ updatedAt: -1 });
     return res.status(200).json(products.map((p) => productToDashboard(p)));
   } catch (error) {
     return res.status(503).send({ msg: error.message });
@@ -133,13 +162,23 @@ exports.UpdateProduct = async (req, res) => {
     if (!product) return res.status(404).json({ msg: "Product not found" });
 
     const uploaded = await uploadAll(req.files);
-    const fields = dashboardToProductFields(req.body, { partial: true });
-    const img = await resolveImageUrls(req.body, uploaded);
+    const fields = dashboardToProductFields(req.body);
+    const hasPicturePayload =
+      (Array.isArray(req.body.pictures) && req.body.pictures.length > 0) ||
+      (Array.isArray(req.body.img) && req.body.img.length > 0) ||
+      (uploaded && uploaded.length > 0);
 
-    applyProductFields(product, fields, img.length ? img : null);
-    await product.save();
+    const resolvedImg = hasPicturePayload
+      ? await resolveImageUrls(req.body, uploaded)
+      : null;
 
-    return res.status(202).send({ msg: "Update success" });
+    applyProductFields(product, fields, resolvedImg);
+    await product.save({ validateModifiedOnly: false });
+
+    return res.status(202).send({
+      msg: "Update success",
+      product: productToDashboard(product),
+    });
   } catch (error) {
     return res.status(503).send({ msg: error.message });
   }
