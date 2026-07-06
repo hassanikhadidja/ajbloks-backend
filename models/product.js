@@ -5,6 +5,14 @@ const qaSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const colorSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: "" },
+    hex: { type: String, required: true, trim: true },
+  },
+  { _id: false },
+);
+
 const productSchema = new mongoose.Schema(
   {
     name: { type: String, require: [true, "Le nom du produit est obligatoire"] },
@@ -29,6 +37,9 @@ const productSchema = new mongoose.Schema(
     whyLoveIt: [{ type: String }],
     qa: [qaSchema],
     isBook: { type: Boolean, default: false },
+    isTrending: { type: Boolean, default: false },
+    hasMultipleColors: { type: Boolean, default: false },
+    colors: { type: [colorSchema], default: [] },
   },
   { timestamps: true },
 );

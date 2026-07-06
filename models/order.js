@@ -7,6 +7,14 @@ function generateTrackingCode() {
   return code;
 }
 
+const orderItemColorSchema = new mongoose.Schema(
+  {
+    name: { type: String, default: "" },
+    hex: { type: String, required: true, trim: true },
+  },
+  { _id: false },
+);
+
 const orderItemSchema = new mongoose.Schema(
   {
     productId: { type: mongoose.Schema.Types.ObjectId, ref: "product" },
@@ -14,6 +22,7 @@ const orderItemSchema = new mongoose.Schema(
     price: { type: Number, required: true },
     quantity: { type: Number, required: true, min: 1 },
     img: { type: String, default: "" },
+    selectedColor: { type: orderItemColorSchema, default: undefined },
   },
   { _id: false },
 );

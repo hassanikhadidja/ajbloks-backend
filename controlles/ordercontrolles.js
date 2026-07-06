@@ -1,5 +1,6 @@
 const Order = require("../models/order");
 const { generateTrackingCode } = require("../models/order");
+const { validateOrderItems } = require("../utils/orderItems");
 
 const FREE_DELIVERY_THRESHOLD = 5000;
 const DELIVERY_FEE = 500;
@@ -8,10 +9,12 @@ exports.CreateOrder = async (req, res) => {
   try {
     const { customerName, phone, email, wilaya, commune, items, note, paymentMethod } = req.body;
 
-    if (!items || items.length === 0)
-      return res.status(400).json({ msg: "Order must have at least one item" });
+    const validated = await validateOrderItems(items);
+    if (validated.error) return res.status(400).json({ msg: validated.error });
 
-    const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const orderItems = validated.items;
+
+    const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DELIVERY_FEE;
     let total = subtotal + deliveryFee;
     if (paymentMethod === "online") total = subtotal * 0.95 + deliveryFee;
@@ -26,7 +29,7 @@ exports.CreateOrder = async (req, res) => {
       wilaya,
       commune,
       userId,
-      items,
+      items: orderItems,
       subtotal,
       deliveryFee,
       total,
