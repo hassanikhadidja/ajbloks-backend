@@ -4,10 +4,18 @@ const cloudinary = require("../config/cloudinary");
 const { cloudinaryFolder } = require("../config/cloudinaryFolder");
 const { dashboardToProductFields, productToDashboard } = require("../utils/productMapper");
 
+function hasCloudinary() {
+  return !!(
+    process.env.CLOUDINARY_NAME &&
+    process.env.CLOUDINARY_APIKEY &&
+    process.env.CLOUDINARY_APISECRET
+  );
+}
+
 const uploadOne = (buffer) =>
   new Promise((resolve, reject) => {
     cloudinary.uploader
-      .upload_stream({ folder: cloudinaryFolder() }, (err, result) => {
+      .upload_stream({ folder: cloudinaryFolder("products") }, (err, result) => {
         if (err) reject(err);
         else resolve(result.secure_url);
       })
@@ -18,6 +26,18 @@ const uploadAll = (files) =>
   files && files.length > 0
     ? Promise.all(files.map((f) => uploadOne(f.buffer)))
     : Promise.resolve([]);
+
+async function uploadDataUrlOrKeep(dataUrl) {
+  if (!dataUrl.startsWith("data:")) return dataUrl;
+  if (!hasCloudinary()) return dataUrl;
+  try {
+    const base64 = dataUrl.split(",")[1] || "";
+    const buffer = Buffer.from(base64, "base64");
+    return await uploadOne(buffer);
+  } catch {
+    return dataUrl;
+  }
+}
 
 async function resolveImageUrls(body, uploadedUrls) {
   const keepImgs = [];
@@ -36,15 +56,30 @@ async function resolveImageUrls(body, uploadedUrls) {
   for (const pic of pictureSources) {
     if (typeof pic !== "string" || !pic.trim()) continue;
     if (pic.startsWith("data:")) {
-      const base64 = pic.split(",")[1] || "";
-      const buffer = Buffer.from(base64, "base64");
-      resolved.push(await uploadOne(buffer));
+      resolved.push(await uploadDataUrlOrKeep(pic));
     } else if (pic.startsWith("http")) {
       resolved.push(pic);
     }
   }
 
   return [...new Set(resolved)];
+}
+
+function applyProductFields(product, fields, img) {
+  const next = { ...fields };
+  if (img && img.length) next.img = img;
+  else delete next.img;
+
+  Object.keys(next).forEach((key) => {
+    product.set(key, next[key]);
+  });
+
+  if (Array.isArray(next.colors)) {
+    product.markModified("colors");
+  }
+  if (typeof next.hasMultipleColors === "boolean") {
+    product.markModified("hasMultipleColors");
+  }
 }
 
 // ── ADD ──────────────────────────────────────────────────────────
@@ -59,7 +94,7 @@ exports.AddProduct = async (req, res) => {
     }
 
     fields.img = img;
-    if (!fields.sku) {
+    if (!fields.sku || fields.sku.startsWith("SKU-")) {
       fields.sku = `AJB-${Date.now().toString(36).toUpperCase()}`;
     }
 
@@ -94,21 +129,15 @@ exports.GetOneProduct = async (req, res) => {
 // ── UPDATE ───────────────────────────────────────────────────────
 exports.UpdateProduct = async (req, res) => {
   try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ msg: "Product not found" });
+
     const uploaded = await uploadAll(req.files);
-    const fields = dashboardToProductFields(req.body);
+    const fields = dashboardToProductFields(req.body, { partial: true });
     const img = await resolveImageUrls(req.body, uploaded);
 
-    if (img.length) {
-      fields.img = img;
-    } else {
-      delete fields.img;
-    }
-
-    const product = await Product.findByIdAndUpdate(req.params.id, fields, {
-      new: true,
-      runValidators: true,
-    });
-    if (!product) return res.status(404).json({ msg: "Product not found" });
+    applyProductFields(product, fields, img.length ? img : null);
+    await product.save();
 
     return res.status(202).send({ msg: "Update success" });
   } catch (error) {

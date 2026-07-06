@@ -41,7 +41,7 @@ const productSchema = new mongoose.Schema(
     hasMultipleColors: { type: Boolean, default: false },
     colors: { type: [colorSchema], default: [] },
   },
-  { timestamps: true },
+  { timestamps: true, minimize: false },
 );
 
 module.exports = mongoose.model("product", productSchema);
