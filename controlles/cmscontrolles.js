@@ -84,6 +84,19 @@ const review = makeCrud(Review);
 const store = makeCrud(Store);
 const catalogue = makeCrud(Catalogue);
 
+function storePayload(body) {
+  const data = body || {};
+  return {
+    name: data.name,
+    location: data.location,
+    website: data.website != null ? String(data.website) : "",
+    mapLink: data.mapLink != null ? String(data.mapLink).trim() : "",
+    storeType: data.storeType != null ? String(data.storeType).trim() : "",
+    lat: data.lat != null && data.lat !== "" ? Number(data.lat) : null,
+    lng: data.lng != null && data.lng !== "" ? Number(data.lng) : null,
+  };
+}
+
 exports.listReviews = review.list;
 exports.createReview = review.create;
 exports.updateReview = async (req, res) => {
@@ -93,8 +106,43 @@ exports.updateReview = async (req, res) => {
 exports.deleteReview = review.remove;
 
 exports.listStores = store.list;
-exports.createStore = store.create;
-exports.updateStore = store.update;
+exports.createStore = async (req, res) => {
+  try {
+    const payload = storePayload(req.body);
+    if (!payload.name || !payload.location) {
+      return res.status(400).json({ msg: "Name and location required" });
+    }
+    if (!Number.isFinite(payload.lat)) payload.lat = null;
+    if (!Number.isFinite(payload.lng)) payload.lng = null;
+    const item = await Store.create(payload);
+    res.status(201).json({ msg: "Created", id: item._id, mapLink: item.mapLink });
+  } catch (e) {
+    res.status(503).json({ msg: e.message });
+  }
+};
+exports.updateStore = async (req, res) => {
+  try {
+    const data = req.body || {};
+    const $set = {};
+    if (data.name != null) $set.name = data.name;
+    if (data.location != null) $set.location = data.location;
+    if (data.website != null) $set.website = String(data.website);
+    if ("mapLink" in data) $set.mapLink = String(data.mapLink || "").trim();
+    if ("storeType" in data) $set.storeType = String(data.storeType || "").trim();
+    if ("lat" in data) {
+      const lat = Number(data.lat);
+      $set.lat = Number.isFinite(lat) ? lat : null;
+    }
+    if ("lng" in data) {
+      const lng = Number(data.lng);
+      $set.lng = Number.isFinite(lng) ? lng : null;
+    }
+    await Store.findByIdAndUpdate(req.params.id, { $set }, { new: true, runValidators: true });
+    res.status(202).json({ msg: "Updated" });
+  } catch (e) {
+    res.status(503).json({ msg: e.message });
+  }
+};
 exports.deleteStore = store.remove;
 
 exports.listCatalogues = catalogue.list;
