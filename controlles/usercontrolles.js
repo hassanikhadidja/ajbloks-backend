@@ -76,8 +76,13 @@ exports.getUsers=async(req,res)=>{
 
 exports.UpdateUSER=async(req,res)=>{
     try {
-     
     const {body}=req
+    if (body.password) {
+      if (!passwordvalidator(body.password)) {
+        return res.status(400).json({msg:"Invalid password"})
+      }
+      body.password = await bcrypt.hash(body.password, 10)
+    }
     await User.findByIdAndUpdate(req.params.id,body,{new:true})
         
        return res.status(202).json({msg:"Update success"})

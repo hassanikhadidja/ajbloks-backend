@@ -216,3 +216,90 @@ exports.setPromoBar = async (req, res) => {
     res.status(503).json({ msg: e.message });
   }
 };
+
+const ReturnRequest = require("../models/returnrequest");
+const ALLOWED_RETURN_TYPES = new Set([
+  "retour",
+  "echange",
+  "reclamation",
+  "contact",
+]);
+
+function mapReturnRequest(item) {
+  const obj = item.toObject ? item.toObject() : item;
+  const pictures = Array.isArray(obj.pictures)
+    ? obj.pictures.filter(Boolean)
+    : [];
+  return {
+    ...obj,
+    id: String(obj._id),
+    _id: String(obj._id),
+    pictures,
+    picture: pictures[0] || "",
+  };
+}
+
+exports.listReturnRequests = async (req, res) => {
+  try {
+    const items = await ReturnRequest.find().sort({ createdAt: -1 });
+    res.json(items.map(mapReturnRequest));
+  } catch (e) {
+    res.status(503).json({ msg: e.message });
+  }
+};
+
+exports.createReturnRequest = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const name = String(body.name || "").trim();
+    const comment = String(body.comment || "").trim();
+    const requestType = String(body.requestType || "").trim();
+    const source = body.source === "contact" ? "contact" : "retours";
+
+    if (!name || !comment) {
+      return res.status(400).json({ msg: "Nom et commentaire obligatoires" });
+    }
+    if (!ALLOWED_RETURN_TYPES.has(requestType)) {
+      return res.status(400).json({ msg: "Type de demande invalide" });
+    }
+
+    const pictures = [];
+    for (const pic of body.pictures || []) {
+      if (typeof pic !== "string" || !pic.trim()) continue;
+      if (pic.startsWith("data:")) {
+        pictures.push(await uploadDataUrlIfNeeded(pic, "return-requests"));
+      } else {
+        pictures.push(pic);
+      }
+    }
+
+    const item = await ReturnRequest.create({
+      name,
+      email: String(body.email || "").trim(),
+      phone: String(body.phone || "").trim(),
+      comment,
+      wilaya: String(body.wilaya || "").trim(),
+      requestType,
+      trackingNumber: String(body.trackingNumber || "").trim(),
+      buyerContact: String(body.buyerContact || "").trim(),
+      pictures,
+      source,
+    });
+
+    res.status(201).json({ msg: "Demande enregistrée", id: item._id });
+  } catch (e) {
+    res.status(503).json({ msg: e.message });
+  }
+};
+
+exports.deleteReturnRequest = async (req, res) => {
+  try {
+    const result = await ReturnRequest.deleteOne({ _id: req.params.id });
+    if (!result.deletedCount) {
+      return res.status(404).json({ msg: "Demande introuvable" });
+    }
+    res.json({ msg: "Demande supprimée" });
+  } catch (e) {
+    res.status(503).json({ msg: e.message });
+  }
+};
