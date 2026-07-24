@@ -34,6 +34,13 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 let dbReady;
 
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "AJBloks API is running",
+  });
+});
+
 app.use(async (req, res, next) => {
   try {
     if (!dbReady) {
