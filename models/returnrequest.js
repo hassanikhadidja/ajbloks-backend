@@ -16,6 +16,11 @@ const returnRequestSchema = new mongoose.Schema(
     buyerContact: { type: String, default: "", trim: true },
     pictures: [{ type: String }],
     source: { type: String, enum: ["retours", "contact"], required: true },
+    status: {
+      type: String,
+      enum: ["nouvelle", "en_cours", "attente_client", "resolue", "annulee"],
+      default: "nouvelle",
+    },
   },
   { timestamps: true },
 );

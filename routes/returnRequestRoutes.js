@@ -6,6 +6,7 @@ const isAdmin = require("../middlewares/isAdmin");
 
 router.get("/", Auth, isAdmin, ctrl.listReturnRequests);
 router.post("/", ctrl.createReturnRequest);
+router.patch("/:id", Auth, isAdmin, ctrl.updateReturnRequest);
 router.delete("/:id", Auth, isAdmin, ctrl.deleteReturnRequest);
 
 module.exports = router;

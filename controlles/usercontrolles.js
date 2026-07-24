@@ -3,6 +3,7 @@ const passwordvalidator = require("../middlewares/passwordvalidator")
 const User=require("../models/user")
 const bcrypt = require("bcrypt")
 const { getJwtSecret } = require("../config/jwtSecret")
+const { upsertNewsletter } = require("./newslettercontrolles")
 
 exports.Adduser=async(req,res)=>{
     try {
@@ -25,6 +26,15 @@ exports.Adduser=async(req,res)=>{
   const hashedPassword = await bcrypt.hash(req.body.password,10); 
           user.password=hashedPassword
            await user.save()
+           try {
+             await upsertNewsletter({
+               email: user.email,
+               name: user.name || "",
+               userId: String(user._id),
+               source: "account",
+               accepted: user.marketingEmail !== false,
+             });
+           } catch (e) {}
            return res.status(201).json({msg:"Register success"})
     } catch (error) {
         return res.status(503).json({msg:error.message})
@@ -83,7 +93,18 @@ exports.UpdateUSER=async(req,res)=>{
       }
       body.password = await bcrypt.hash(body.password, 10)
     }
-    await User.findByIdAndUpdate(req.params.id,body,{new:true})
+    const user = await User.findByIdAndUpdate(req.params.id,body,{new:true})
+    if (user && user.email) {
+      try {
+        await upsertNewsletter({
+          email: user.email,
+          name: user.name || "",
+          userId: String(user._id),
+          source: "account",
+          accepted: user.marketingEmail !== false,
+        });
+      } catch (e) {}
+    }
         
        return res.status(202).json({msg:"Update success"})
     } catch (error) {

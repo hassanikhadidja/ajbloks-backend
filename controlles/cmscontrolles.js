@@ -225,6 +225,14 @@ const ALLOWED_RETURN_TYPES = new Set([
   "contact",
 ]);
 
+const ALLOWED_RETURN_STATUSES = new Set([
+  "nouvelle",
+  "en_cours",
+  "attente_client",
+  "resolue",
+  "annulee",
+]);
+
 function mapReturnRequest(item) {
   const obj = item.toObject ? item.toObject() : item;
   const pictures = Array.isArray(obj.pictures)
@@ -236,6 +244,7 @@ function mapReturnRequest(item) {
     _id: String(obj._id),
     pictures,
     picture: pictures[0] || "",
+    status: obj.status || "nouvelle",
   };
 }
 
@@ -284,9 +293,30 @@ exports.createReturnRequest = async (req, res) => {
       buyerContact: String(body.buyerContact || "").trim(),
       pictures,
       source,
+      status: "nouvelle",
     });
 
     res.status(201).json({ msg: "Demande enregistrée", id: item._id });
+  } catch (e) {
+    res.status(503).json({ msg: e.message });
+  }
+};
+
+exports.updateReturnRequest = async (req, res) => {
+  try {
+    const status = String((req.body && req.body.status) || "").trim();
+    if (!ALLOWED_RETURN_STATUSES.has(status)) {
+      return res.status(400).json({ msg: "Statut invalide" });
+    }
+    const item = await ReturnRequest.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true },
+    );
+    if (!item) {
+      return res.status(404).json({ msg: "Demande introuvable" });
+    }
+    res.status(202).json({ msg: "Statut mis à jour", status: item.status });
   } catch (e) {
     res.status(503).json({ msg: e.message });
   }

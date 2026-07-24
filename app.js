@@ -13,6 +13,7 @@ const playRoutes = require("./routes/playRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 const returnRequestRoutes = require("./routes/returnRequestRoutes");
+const newsletterRoutes = require("./routes/newsletterRoutes");
 
 const app = express();
 
@@ -64,6 +65,7 @@ mount("/play", playRoutes);
 mount("/settings", settingsRoutes);
 mount("/upload", uploadRoutes);
 mount("/return-request", returnRequestRoutes);
+mount("/newsletter", newsletterRoutes);
 
 app.use((req, res) => res.status(404).json({ message: "Route not found" }));
 
